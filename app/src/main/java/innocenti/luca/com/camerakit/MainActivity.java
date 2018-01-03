@@ -8,6 +8,9 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.hardware.camera2.CameraAccessException;
+import android.hardware.camera2.CameraCharacteristics;
+import android.hardware.camera2.CameraManager;
 import android.location.Location;
 import android.support.annotation.FractionRes;
 import android.support.annotation.NonNull;
@@ -16,6 +19,7 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.util.SizeF;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
@@ -84,6 +88,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private int orientazione;
     private ToggleButton xy;
     private boolean xyb;
+    private double hfov;
+    private double vfov;
 
 
     @Override
@@ -91,6 +97,34 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         alt_occhi = (NumberPicker) findViewById(R.id.numberPicker);
+
+        // FOV
+        CameraManager manager = (CameraManager) getSystemService(CAMERA_SERVICE);
+
+        try {
+            for (String cameraId : manager.getCameraIdList()) {
+                try {
+                    CameraCharacteristics info = manager.getCameraCharacteristics(cameraId);
+                    if (info.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK) {
+                        SizeF sensorSize = info.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
+                        float[] focalLengths = info.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+                        if (focalLengths != null && focalLengths.length > 0) {
+                            hfov = (float) (2.0f * Math.atan(sensorSize.getWidth() / (2.0f * focalLengths[0])));
+                            vfov = (float) (2.0f * Math.atan(sensorSize.getHeight() / (2.0f * focalLengths[0])));
+                            Log.d("FOV", "HFOV "+Double.toString(Math.toDegrees(hfov))+"VFOV "+Double.toString(Math.toDegrees(vfov)));
+                        }
+                    }
+                } catch (CameraAccessException e) {
+                    e.printStackTrace();
+                }
+                // Do something with the characteristics
+            }
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+
+
+        // ----------------------
 
         xy = (ToggleButton) findViewById(R.id.toggleButton);
         xy.setTextOff("X");
@@ -206,6 +240,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Override
     protected void onPause() {
         camera.stop();
+        angolo.setText("");
+        stato = 0;
+        xy.setEnabled(false);
+        xy.setChecked(false);
+        takepicture.setText(R.string.take_picture);
         mSensorManager.unregisterListener(this);
         super.onPause();
     }
@@ -244,6 +283,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         //Log.d("bussola", Double.toString(Math.toDegrees(az)));
 
+        DecimalFormat df_fov = new DecimalFormat("#.#");
         DecimalFormat df2 = new DecimalFormat("#.##");
         DecimalFormat dfcoord = new DecimalFormat(".#######");
 
@@ -252,12 +292,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         if (stato > 0)
         {
-            if (Math.abs(Math.toDegrees(ro)) < 90) {
-                altezza = altezza_occhi - distanza * Math.tan(pimezzo + ro);
+            Log.d("TTT",Double.toString(Math.toDegrees(ro))+ " H "+Double.toString(distanza * Math.tan(pimezzo + ro)));
+            if (Math.abs(Math.toDegrees(ro)) < -90) {
+                altezza = altezza_occhi + distanza * Math.tan(pimezzo + ro);
             }
             else
             {
-                altezza = altezza_occhi + distanza * Math.tan(pimezzo + ro);
+                altezza = altezza_occhi -  distanza * Math.tan(pimezzo + ro);
             }
 
             //Log.d("angolo", Double.toString(Math.toDegrees(pimezzo+ro)));
@@ -266,6 +307,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
             String altezza_str = df2.format(altezza_filtrata);
             String distanza_str = df2.format(distanza);
+            String hfov_str = df_fov.format(2* distanza * Math.tan(hfov/2));
+            String vfov_str = df_fov.format(2* distanza * Math.tan(vfov/2));
 
             double x = 0.0;
             // calcolo di X
@@ -297,7 +340,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
             if (xyb == false)
             {
-                angolo.setText("Dist. : "+ distanza_str +" m \nH :" + altezza_str+ " m\n Azimuth : "+ Integer.toString(facing_i) + "\n"+lat_str+"/"+lng_str);
+                angolo.setText("Dist. : "+ distanza_str +" m \nHFOV : "+ hfov_str+  "m  VFOV : "+ vfov_str+  "m\nH :" + altezza_str+ " m\n Azimuth : "+ Integer.toString(facing_i) + "\n"+lat_str+"/"+lng_str);
 
             }
             else

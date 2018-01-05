@@ -75,7 +75,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private double distanza;
     private double pimezzo = Math.PI / 2;
     private double altezza_occhi = 1.65;
-    private double alpha = 0.5;
+    private double alpha = 0.05;
     private double altezza;
     private double altezza_filtrata;
 
@@ -90,6 +90,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private boolean xyb;
     private double hfov;
     private double vfov;
+    private Rolling r;
 
 
     @Override
@@ -97,6 +98,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         alt_occhi = (NumberPicker) findViewById(R.id.numberPicker);
+
+        r = new Rolling(100);
+
 
         // FOV
         CameraManager manager = (CameraManager) getSystemService(CAMERA_SERVICE);
@@ -327,6 +331,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
             double delta = Math.abs(az_0-az);
             x = distanza*Math.tan(delta);
+            r.add(x);
+
+            double x_filtrato = r.getAverage();
+            Log.d("Filtro", Double.toString(x_filtrato));
 
             Double facing = new Double(Math.toDegrees((az + (Math.PI/2)) % (2 * Math.PI)));
             int facing_i = facing.intValue();
@@ -334,7 +342,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
             Log.d("X ", "AZ = " +Double.toString(Math.toDegrees(az))+" Az_0"+ Double.toString((Math.toDegrees(az_0)))+" Diff" + Double.toString(Math.toDegrees(az-az_0)));
 
-            String x_str = df2.format(x);
+            String x_str = df2.format(x_filtrato);
             String lat_str = dfcoord.format(latitude);
             String lng_str = dfcoord.format(longitude);
 

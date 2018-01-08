@@ -91,6 +91,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private double hfov;
     private double vfov;
     private Rolling r;
+    private KalmanFilter kf;
 
 
     @Override
@@ -100,6 +101,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         alt_occhi = (NumberPicker) findViewById(R.id.numberPicker);
 
         r = new Rolling(100);
+        kf = new KalmanFilter();
+
+        try {
+            kf.initialize2();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
 
         // FOV
@@ -290,6 +298,20 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         DecimalFormat df_fov = new DecimalFormat("#.#");
         DecimalFormat df2 = new DecimalFormat("#.##");
         DecimalFormat dfcoord = new DecimalFormat(".#######");
+
+
+        try {
+            kf.push(pi,ro);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        try {
+            double[] test = kf.getKalmanPoint2();
+            Log.d("Kalman", Double.toString(Math.toDegrees(test[0]))+ " "+  Double.toString(Math.toDegrees(test[1])) + " " +Math.toDegrees(pi)+ " "+ Math.toDegrees(ro));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
 
         //int inclination = (int) Math.round(Math.toDegrees(Math.acos(mRotationMatrix[8])));
